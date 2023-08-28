@@ -1,0 +1,12 @@
+{
+  "name": "lstdiversity",
+  "version": "0.0.1",
+  "license": "GPL-3.0-or-later",
+  "description": "Collect data on top holders of LSTs",
+  "type": "module",
+  "dependencies": {
+    "commander": "11",
+    "ethers": "6",
+    "lmdb": "2"
+  }
+}
