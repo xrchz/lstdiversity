@@ -146,10 +146,11 @@ async function getHolders(lstSymbol, lstContract, deployBlock) {
   }
   const holders = new Map()
   for (const holder of lastHolders.values()) {
+    console.log(`${timestamp()} ${lstSymbol} getting ${holder} balance @ ${blockTag}`)
     const balance = await lstContract.balanceOf(holder, {blockTag})
-    if (balance) holders.set(holder, balance)
+    if (balance) holders.set(holder, balance.toString())
   }
-  await db.set(key, holders)
+  await db.put(key, holders)
   return holders
 }
 
@@ -168,15 +169,16 @@ for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entrie
   const holders = await getHolders(lstSymbol, lstContract, deployBlock)
   lstHolders.set(lstSymbol, holders)
   for (const [holder, balance] of holders.entries())
-    add(ETHvalue, holder, balance * rate / oneEther)
+    add(ETHvalue, holder, BigInt(balance) * rate / oneEther)
 }
 
 console.log(`${timestamp()} Sorting holders by ETH value`)
 const sorted = Array.from(ETHvalue.entries())
-  .toSorted(([h1, v1], [h2, v2]) => v1 - v2)
+  .toSorted(([h1, v1], [h2, v2]) => v1 < v2 ? 1 : v1 > v2 ? -1 : 0)
   .slice(0, parseInt(options.numTopHolders))
 
-const outputFile = createWriteStream(options.filename)
+const filename = options.filename || `lstdiv-${blockTag}.json`
+const outputFile = createWriteStream(filename)
 const writeOut = async s => new Promise(resolve =>
   outputFile.write(s) ? resolve() : outputFile.once('drain', resolve))
 const endOut = (s) => new Promise(resolve => outputFile.end(s, resolve))
@@ -190,7 +192,7 @@ const makeDelim = () => {
   return () => f()
 }
 
-console.log(`${timestamp()} Writing to ${options.filename}`)
+console.log(`${timestamp()} Writing to ${filename}`)
 const blockTime = await provider.getBlock(blockTag).then(b => b.timestamp)
 await writeOut(`{"blockNumber":${blockTag},"timestamp":${blockTime},"data":`)
 const d0 = makeDelim()
@@ -200,6 +202,6 @@ for (const [holder] of sorted) {
   const d1 = makeDelim()
   for (const lstSymbol of LSTs.keys())
     await writeOut(`${d1()}{"lst":"${lstSymbol}","amount":"${lstHolders.get(lstSymbol).get(holder)}"}`)
-  await writeOut(']')
+  await writeOut(']}')
 }
 await endOut(']}')
