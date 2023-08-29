@@ -1,6 +1,6 @@
 import { ethers } from 'ethers'
 import { program } from 'commander'
-import { createWriteStream } from 'node:fs'
+import { createWriteStream, readFileSync } from 'node:fs'
 import { open } from 'lmdb'
 
 const options = program
@@ -192,13 +192,18 @@ const makeDelim = () => {
   return () => f()
 }
 
+const labels = JSON.parse(readFileSync('etherscan-labels/data/etherscan/combined/combinedAccountLabels.json'))
+
 console.log(`${timestamp()} Writing to ${filename}`)
 const blockTime = await provider.getBlock(blockTag).then(b => b.timestamp)
 await writeOut(`{"blockNumber":${blockTag},"timestamp":${blockTime},"data":`)
 const d0 = makeDelim()
 
 for (const [holder] of sorted) {
-  await writeOut(`${d0()}{"address":"${holder}","entity":"TODO","lsts":`)
+  await writeOut(`${d0()}{"address":"${holder}"`)
+  const label = labels[holder.toLowerCase()]
+  if (label && label.name) await writeOut(`,"entity":"${label.name}"`)
+  await writeOut(`,"lsts":`)
   const d1 = makeDelim()
   for (const lstSymbol of LSTs.keys()) {
     const amount = lstHolders.get(lstSymbol).get(holder)
