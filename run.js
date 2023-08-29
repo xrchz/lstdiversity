@@ -9,7 +9,7 @@ const options = program
   .option('--prune', 'Prune the database of blocks before <block> then exit')
   .option('-m, --max-query-range <num>', 'Maximum number of blocks to query for events at a time', 1000)
   .option('-n, --num-top-holders <num>', 'Number of top holders (by total ETH value) to include in output file', 100)
-  .option('-f, --filename <name>', 'Name of output file (default: lstdiv-<block>-<tokens+...>.json)')
+  .option('-f, --filename <name>', 'Name of output file (default: lstdiv-<block>-<tokens+...>-<numTop>.json)')
   .option('-x, --exclude <tokens...>', 'Symbols of LSTs to exclude')
   .parse()
   .opts()
@@ -177,7 +177,7 @@ const sorted = Array.from(ETHvalue.entries())
   .toSorted(([h1, v1], [h2, v2]) => v1 < v2 ? 1 : v1 > v2 ? -1 : 0)
   .slice(0, parseInt(options.numTopHolders))
 
-const filename = options.filename || `lstdiv-${blockTag}-${Array.from(LSTs.keys()).join('+')}.json`
+const filename = options.filename || `lstdiv-${blockTag}-${Array.from(LSTs.keys()).join('+')}-${options.numTopHolders}.json`
 const outputFile = createWriteStream(filename)
 const writeOut = async s => new Promise(resolve =>
   outputFile.write(s) ? resolve() : outputFile.once('drain', resolve))
