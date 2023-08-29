@@ -1,0 +1,3 @@
+[submodule "etherscan-labels"]
+	path = etherscan-labels
+	url = https://github.com/brianleect/etherscan-labels.git
