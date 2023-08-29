@@ -40,6 +40,14 @@ if (options.prune) {
 const oneEther = ethers.parseEther('1')
 const excludeLSTs = new Set(options.exclude)
 
+const checkMinBlock = (b) => {
+  if (blockTag < b) {
+    console.error(`${blockTag} is too early (minimum block at least ${b})`)
+    process.exit(1)
+  }
+  return b
+}
+
 const LSTs = new Map()
 async function addLST(lstSymbol, f) {
   if (excludeLSTs.has(lstSymbol)) return
@@ -51,53 +59,53 @@ const ERC20ABI = [
 ]
 await addLST('stETH', () => ({
   c: new ethers.Contract('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84', ERC20ABI, provider),
-  b: 11473216,
+  b: checkMinBlock(11473216),
   r: oneEther
 }))
 await addLST('wstETH', async () => {
   const c = new ethers.Contract('0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
     ERC20ABI.concat(['function getStETHByWstETH(uint256) view returns (uint256)']), provider)
-  const b = 11888477
+  const b = checkMinBlock(11888477)
   const r = await c.getStETHByWstETH(oneEther, {blockTag})
   return {c, b, r}
 })
 await addLST('rETH', async () => {
   const c = new ethers.Contract('0xae78736Cd615f374D3085123A210448E74Fc6393',
     ERC20ABI.concat(['function getExchangeRate() view returns (uint256)']), provider)
-  const b = 13325304
+  const b = checkMinBlock(13325304)
   const r = await c.getExchangeRate({blockTag})
   return {c, b, r}
 })
 await addLST('cbETH', async () => {
   const c = new ethers.Contract('0xbe9895146f7af43049ca1c1ae358b0541ea49704',
     ERC20ABI.concat(['function exchangeRate() view returns (uint256)']), provider)
-  const b = 14133762
+  const b = checkMinBlock(14133762)
   const r = await c.exchangeRate({blockTag})
   return {c, b, r}
 })
 await addLST('frxETH', () => ({
   c: new ethers.Contract('0x5E8422345238F34275888049021821E8E08CAa1f', ERC20ABI, provider),
-  b: 15686046,
+  b: checkMinBlock(15686046),
   r: oneEther
 }))
 await addLST('sfrxETH', async () => {
   const c = new ethers.Contract('0xac3E018457B222d93114458476f3E3416Abbe38F',
     ERC20ABI.concat(['function pricePerShare() view returns (uint256)']), provider)
-  const b = 15686046
+  const b = checkMinBlock(15686046)
   const r = await c.pricePerShare({blockTag})
   return {c, r}
 })
 await addLST('swETH', async () => {
   const c = new ethers.Contract('0xf951E335afb289353dc249e82926178EaC7DEd78',
     ERC20ABI.concat(['function swETHToETHRate() view returns (uint256)']), provider)
-  const b = 17030767
+  const b = checkMinBlock(17030767)
   const r = await c.swETHToETHRate({blockTag})
   return {c, b, r}
 })
 await addLST('wBETH', async () => {
   const c = new ethers.Contract('0xa2E3356610840701BDf5611a53974510Ae27E2e1',
     ERC20ABI.concat(['function exchangeRate() view returns (uint256)']), provider)
-  const b = 17080241
+  const b = checkMinBlock(17080241)
   const r = await c.exchangeRate({blockTag})
   return {c, b, r}
 })
