@@ -200,8 +200,11 @@ const d0 = makeDelim()
 for (const [holder] of sorted) {
   await writeOut(`${d0()}{"address":"${holder}","entity":"TODO","lsts":`)
   const d1 = makeDelim()
-  for (const lstSymbol of LSTs.keys())
-    await writeOut(`${d1()}{"lst":"${lstSymbol}","amount":"${lstHolders.get(lstSymbol).get(holder)}"}`)
+  for (const lstSymbol of LSTs.keys()) {
+    const amount = lstHolders.get(lstSymbol).get(holder)
+    if (!amount) continue
+    await writeOut(`${d1()}{"lst":"${lstSymbol}","amount":"${amount}"}`)
+  }
   await writeOut(']}')
 }
 await endOut(']}')
