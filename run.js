@@ -145,8 +145,11 @@ async function getHolders(lstSymbol, lstContract, deployBlock) {
     startBlock = endBlock + 1
   }
   const holders = new Map()
+  const lastHoldersSize = lastHolders.size.toString()
+  let numProcessed = 0
   for (const holder of lastHolders.values()) {
-    console.log(`${timestamp()} ${lstSymbol} getting ${holder} balance @ ${blockTag}`)
+    console.log(`${timestamp()} ${lstSymbol} getting ${holder} balance @ ${blockTag} (${
+      (++numProcessed).toString().padStart(lastHoldersSize.length, '0')}/${lastHoldersSize})`)
     const balance = await lstContract.balanceOf(holder, {blockTag})
     if (balance) holders.set(holder, balance.toString())
   }
