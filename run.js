@@ -111,14 +111,16 @@ await addLST('wBETH', async () => {
 })
 // TODO: add diva when launched
 
-const minBlock = Array.from(LSTs.values()).reduce((a, x) => x.b > a ? x.b : a, 0)
-if (blockTag < minBlock) {
-  console.error(`${blockTag} is too early (minimum block is ${minBlock})`)
-  process.exit(1)
+const needsLastBlock = new Set(LSTs.keys())
+const lastBlocks = new Map()
+for (const key of db.getKeys({reverse: true})) {
+  const [block, lstSymbol] = key.split('/')
+  if (needsLastBlock.has(lstSymbol)) {
+    needsLastBlock.delete(lstSymbol)
+    lastBlocks.set(lstSymbol, block)
+  }
+  if (!needsLastBlock.size) break
 }
-
-const lastKeyResult = db.getKeys({reverse: true, limit: 1}).next()
-const lastBlock = lastKeyResult.done ? null : lastKeyResult.value.split('/')[0]
 
 const maxQueryRange = parseInt(options.maxQueryRange)
 if (maxQueryRange > 10000) {
@@ -130,6 +132,7 @@ async function getHolders(lstSymbol, lstContract, deployBlock) {
   const key = `${blockTag}/${lstSymbol}`
   const cached = db.get(key)
   if (typeof cached != 'undefined') return cached
+  const lastBlock = lastBlocks.get(lstSymbol)
   const lastHolders = lastBlock ?
     new Set(db.get(`${lastBlock}/${lstSymbol}`).keys()) :
     new Set()
