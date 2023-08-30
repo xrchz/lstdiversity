@@ -137,7 +137,7 @@ async function getHolders(lstSymbol, lstContract, deployBlock) {
     new Set(db.get(`${lastBlock}/${lstSymbol}`).keys()) :
     new Set()
   let startBlock = parseInt(lastBlock || deployBlock)
-  while (startBlock < blockTag) {
+  while (startBlock <= blockTag) {
     const endBlock = Math.min(blockTag, startBlock + maxQueryRange - 1)
     console.log(`${timestamp()} ${lstSymbol} ${startBlock}..${endBlock}`)
     const logs = await lstContract.queryFilter('Transfer', startBlock, endBlock)
