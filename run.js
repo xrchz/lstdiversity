@@ -224,11 +224,11 @@ const writeOut = async s => new Promise(resolve =>
   outputFile.write(s) ? resolve() : outputFile.once('drain', resolve))
 const endOut = (s) => new Promise(resolve => outputFile.end(s, resolve))
 
-const makeDelim = () => {
+const makeDelim = (fst) => {
   let f
   f = () => {
     f = () => ','
-    return '['
+    return fst
   }
   return () => f()
 }
@@ -238,19 +238,20 @@ const labels = JSON.parse(readFileSync('etherscan-labels/data/etherscan/combined
 console.log(`${timestamp()} Writing to ${filename}`)
 const blockTime = await provider.getBlock(blockTag).then(b => b.timestamp)
 await writeOut(`{"blockNumber":${blockTag},"timestamp":${blockTime},"data":`)
-const d0 = makeDelim()
+const d0 = makeDelim('{')
 
-for (const [holder] of sorted) {
-  await writeOut(`${d0()}{"address":"${holder}"`)
-  const label = labels[holder.toLowerCase()]
-  if (label && label.name) await writeOut(`,"entity":"${label.name}"`)
-  await writeOut(`,"lsts":`)
-  const d1 = makeDelim()
-  for (const lstSymbol of LSTs.keys()) {
-    const amount = lstHolders.get(lstSymbol).get(holder)
+for (const lstSymbol of LSTs.keys()) {
+  await writeOut(`${d0()}"${lstSymbol}":`)
+  const holders = lstHolders.get(lstSymbol)
+  const d1 = makeDelim('[')
+  for (const [holder] of sorted) {
+    const amount = holders.get(holder)
     if (!amount) continue
-    await writeOut(`${d1()}{"lst":"${lstSymbol}","amount":"${amount}"}`)
+    await writeOut(`${d1()}{"address":"${holder}",`)
+    const label = labels[holder.toLowerCase()]
+    if (label && label.name) await writeOut(`"entity":"${label.name}",`)
+    await writeOut(`"amount":"${amount}"}`)
   }
-  await writeOut(']}')
+  await writeOut(']')
 }
-await endOut(']}')
+await endOut('}}')
