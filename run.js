@@ -7,6 +7,7 @@ const options = program
   .option('-r, --rpc <url>', 'Full node RPC endpoint URL', 'http://localhost:8545')
   .option('-b, --block <num>', 'Block number to collect data for (default: latest)')
   .option('--prune', 'Prune the database of blocks before <block> then exit')
+  .option('--reverse', 'Reverse direction of pruning (delete <block> and greater)')
   .option('-m, --max-query-range <num>', 'Maximum number of blocks to query for events at a time', 1000)
   .option('-n, --num-top-holders <num>', 'Number of top holders (by total ETH value) to include in output file', 100)
   .option('-f, --filename <name>', 'Name of output file (default: lstdiv-<block>-<tokens+...>-<numTop>.json)')
@@ -27,10 +28,12 @@ const blockTag = options.block ? parseInt(options.block) : await provider.getBlo
 console.log(`${timestamp()} Working @ block ${blockTag}`)
 
 if (options.prune) {
-  for (const key of db.getKeys()) {
+  for (const key of db.getKeys({reverse: options.reverse})) {
     const keyBlock = parseInt(key.split('/')[0])
-    if (keyBlock < blockTag)
+    if (options.reverse ? keyBlock >= blockTag : keyBlock < blockTag) {
+      console.log(`Removing ${key}`)
       await db.remove(key)
+    }
     else
       break
   }
