@@ -202,23 +202,8 @@ function add(map, key, increment) {
     map.set(key, increment)
 }
 
-const ETHvalue = new Map()
-const lstHolders = new Map()
-
-for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entries()) {
-  console.log(`${timestamp()} Getting holders for ${lstSymbol}`)
-  const holders = await getHolders(lstSymbol, lstContract, deployBlock)
-  lstHolders.set(lstSymbol, holders)
-  for (const [holder, balance] of holders.entries())
-    add(ETHvalue, holder, BigInt(balance) * rate / oneEther)
-}
-
-console.log(`${timestamp()} Sorting holders by ETH value`)
-const sorted = Array.from(ETHvalue.entries())
-  .toSorted(([h1, v1], [h2, v2]) => v1 < v2 ? 1 : v1 > v2 ? -1 : 0)
-  .slice(0, parseInt(options.numTopHolders))
-
 const filename = options.filename || `lstdiv-${blockTag}-${Array.from(LSTs.keys()).join('+')}-${options.numTopHolders}.json`
+const numTopHolders = parseInt(options.numTopHolders)
 const outputFile = createWriteStream(filename)
 const writeOut = async s => new Promise(resolve =>
   outputFile.write(s) ? resolve() : outputFile.once('drain', resolve))
@@ -240,17 +225,25 @@ const blockTime = await provider.getBlock(blockTag).then(b => b.timestamp)
 await writeOut(`{"blockNumber":${blockTag},"timestamp":${blockTime},"data":`)
 const d0 = makeDelim('{')
 
-for (const lstSymbol of LSTs.keys()) {
+for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entries()) {
   await writeOut(`${d0()}"${lstSymbol}":`)
-  const holders = lstHolders.get(lstSymbol)
+  console.log(`${timestamp()} Getting holders for ${lstSymbol}`)
+  const holders = await getHolders(lstSymbol, lstContract, deployBlock)
+  const ETHvalue = new Map()
+  for (const [holder, balance] of holders.entries())
+    add(ETHvalue, holder, BigInt(balance) * rate / oneEther)
+  console.log(`${timestamp()} Sorting holders by ETH value`)
+  const sorted = Array.from(ETHvalue.entries())
+    .toSorted(([h1, v1], [h2, v2]) => v1 < v2 ? 1 : v1 > v2 ? -1 : 0)
+    .slice(0, numTopHolders)
   const d1 = makeDelim('[')
-  for (const [holder] of sorted) {
+  for (const [holder, amountEth] of sorted.values()) {
     const amount = holders.get(holder)
-    if (!amount) continue
+    if (!amount) { console.error(`No amount for ${lstSymbol} for ${holder}`); process.exit(1) }
     await writeOut(`${d1()}{"address":"${holder}",`)
     const label = labels[holder.toLowerCase()]
     if (label && label.name) await writeOut(`"entity":"${label.name}",`)
-    await writeOut(`"amount":"${amount}"}`)
+    await writeOut(`"amount_lst":"${amount}","amount_eth":"${amountEth}"}`)
   }
   await writeOut(']')
 }
