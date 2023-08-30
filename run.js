@@ -9,6 +9,7 @@ const options = program
   .option('--prune', 'Prune the database of blocks before <block> then exit')
   .option('--reverse', 'Reverse direction of pruning (delete <block> and greater)')
   .option('-m, --max-query-range <num>', 'Maximum number of blocks to query for events at a time', 1000)
+  .option('-c, --multicall-limit <num>', 'Maximum number of balance calls to multicall at a time', 1000)
   .option('-n, --num-top-holders <num>', 'Number of top holders (by total ETH value) to include in output file', 100)
   .option('-f, --filename <name>', 'Name of output file (default: lstdiv-<block>-<tokens+...>-<numTop>.json)')
   .option('-x, --exclude <tokens...>', 'Symbols of LSTs to exclude')
@@ -16,6 +17,9 @@ const options = program
   .opts()
 
 const provider = new ethers.JsonRpcProvider(options.rpc)
+
+const multicall = new ethers.Contract('0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441',
+  ['function aggregate((address, bytes)[]) view returns (uint256, bytes[])'], provider)
 
 const db = open({path: 'db'})
 // <block>/<lstSymbol> : map from address to balance of holders
@@ -50,6 +54,9 @@ const checkMinBlock = (b) => {
   }
   return b
 }
+
+const multicallLimit = parseInt(options.multicallLimit)
+if (1 < multicallLimit) checkMinBlock(7929876)
 
 const LSTs = new Map()
 async function addLST(lstSymbol, f) {
@@ -130,6 +137,10 @@ if (maxQueryRange > 10000) {
   console.error(`max query range too large (> 10000)`)
   process.exit(1)
 }
+if (multicallLimit > 10000) {
+  console.error(`multicall limit too large (> 10000)`)
+  process.exit(1)
+}
 
 async function getHolders(lstSymbol, lstContract, deployBlock) {
   const key = `${blockTag}/${lstSymbol}`
@@ -150,11 +161,35 @@ async function getHolders(lstSymbol, lstContract, deployBlock) {
   const holders = new Map()
   const lastHoldersSize = lastHolders.size.toString()
   let numProcessed = 0
-  for (const holder of lastHolders.values()) {
-    console.log(`${timestamp()} ${lstSymbol} getting ${holder} balance @ ${blockTag} (${
-      (++numProcessed).toString().padStart(lastHoldersSize.length, '0')}/${lastHoldersSize})`)
-    const balance = await lstContract.balanceOf(holder, {blockTag})
-    if (balance) holders.set(holder, balance.toString())
+  if (multicallLimit <= 1) {
+    for (const holder of lastHolders.values()) {
+      console.log(`${timestamp()} ${lstSymbol} getting ${holder} balance @ ${blockTag} (${
+        (++numProcessed).toString().padStart(lastHoldersSize.length, '0')}/${lastHoldersSize})`)
+      const balance = await lstContract.balanceOf(holder, {blockTag})
+      if (balance) holders.set(holder, balance.toString())
+    }
+  }
+  else {
+    const fragment = lstContract.interface.getFunction('balanceOf(address)')
+    const lstAddress = await lstContract.getAddress()
+    const getCallData = (holder) => lstContract.interface.encodeFunctionData(fragment, [holder])
+    const holdersToProcess = Array.from(lastHolders.values())
+    while (holdersToProcess.length) {
+      const batch = holdersToProcess.splice(0, multicallLimit)
+      const calls = batch.map(holder => [lstAddress, getCallData(holder)])
+      console.log(`${timestamp()} ${lstSymbol} getting ${calls.length} balances @ ${blockTag} (${
+        numProcessed.toString().padStart(lastHoldersSize.length, '0')}/${lastHoldersSize})`)
+      const [blockNum, results] = await multicall.aggregate(calls, {blockTag})
+      numProcessed += calls.length
+      if (parseInt(blockNum) != blockTag && calls.length == results.length) {
+        console.error(`Unexpected block ${blockNum} or length ${results.length} from multicall (wanted ${blockTag}, ${calls.length})`)
+        process.exit(1)
+      }
+      for (const [i, holder] of batch.entries()) {
+        const balance = lstContract.interface.decodeFunctionResult(fragment, results[i])
+        if (balance) holders.set(holder, balance.toString())
+      }
+    }
   }
   await db.put(key, holders)
   return holders
