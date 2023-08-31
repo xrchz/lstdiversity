@@ -21,6 +21,10 @@ const provider = new ethers.JsonRpcProvider(options.rpc)
 const multicall = new ethers.Contract('0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441',
   ['function aggregate((address, bytes)[]) view returns (uint256, bytes[])'], provider)
 
+const reverseRecords = new ethers.Contract('0x3671aE578E63FdF66ad4F3E12CC0c0d71Ac7510C',
+  ['function getNames(address[]) view returns (string[])'], provider)
+const reverseRecordsMinBlock = 12010790
+
 const db = open({path: 'db'})
 // <block>/<lstSymbol> : map from address to balance of holders
 
@@ -236,13 +240,18 @@ for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entrie
   const sorted = Array.from(ETHvalue.entries())
     .toSorted(([h1, v1], [h2, v2]) => v1 < v2 ? 1 : v1 > v2 ? -1 : 0)
     .slice(0, numTopHolders)
+  console.log(`${timestamp()} Getting ENS names`)
+  const names = reverseRecordsMinBlock < blockTag ?
+    await reverseRecords.getNames(sorted.map(([a]) => a), {blockTag}) : []
   const d1 = makeDelim('[')
-  for (const [holder, amountEth] of sorted.values()) {
+  for (const [i, [holder, amountEth]] of sorted.entries()) {
     const amount = holders.get(holder)
+    const ensName = names[i]
     if (!amount) { console.error(`No amount for ${lstSymbol} for ${holder}`); process.exit(1) }
     await writeOut(`${d1()}{"address":"${holder}",`)
     const label = labels[holder.toLowerCase()]
     if (label && label.name) await writeOut(`"entity":"${label.name}",`)
+    if (ensName) await writeOut(`"ens":"${ensName}",`)
     await writeOut(`"amount_lst":"${amount}","amount_eth":"${amountEth}"}`)
   }
   await writeOut(']')
