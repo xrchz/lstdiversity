@@ -252,7 +252,8 @@ for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entrie
     const label = labels[holder.toLowerCase()]
     if (label && label.name) await writeOut(`"entity":"${label.name}",`)
     if (ensName) await writeOut(`"ens":"${ensName}",`)
-    await writeOut(`"amount_lst":"${amount}","amount_eth":"${amountEth}"}`)
+    await writeOut(`"amount_wei_lst":"${amount}","amount_wei_eth":"${amountEth}",`)
+    await writeOut(`"amount_lst":"${ethers.formatEther(amount)}","amount_eth":"${ethers.formatEther(amountEth)}"}`)
   }
   await writeOut(']')
 }
