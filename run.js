@@ -185,7 +185,7 @@ async function getHolders(lstSymbol, lstContract, deployBlock) {
         numProcessed.toString().padStart(lastHoldersSize.length, '0')}/${lastHoldersSize})`)
       const [blockNum, results] = await multicall.aggregate(calls, {blockTag})
       numProcessed += calls.length
-      if (parseInt(blockNum) != blockTag && calls.length == results.length) {
+      if (parseInt(blockNum) != blockTag || calls.length != results.length) {
         console.error(`Unexpected block ${blockNum} or length ${results.length} from multicall (wanted ${blockTag}, ${calls.length})`)
         process.exit(1)
       }
