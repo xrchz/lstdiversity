@@ -9,7 +9,7 @@ const options = program
   .option('--prune', 'Prune the database of blocks before <block> then exit')
   .option('--reverse', 'Reverse direction of pruning (delete <block> and greater)')
   .option('-m, --max-query-range <num>', 'Maximum number of blocks to query for events at a time', 1000)
-  .option('-c, --multicall-limit <num>', 'Maximum number of balance calls to multicall at a time', 1000)
+  .option('-c, --multicall-limit <num>', 'Maximum number of balance calls to multicall at a time', 2048)
   .option('-n, --num-top-holders <num>', 'Number of top holders (by total ETH value) to include in output file', 1000)
   .option('-f, --filename <name>', 'Name of output file (default: data/lstdiv-<block>-<tokens+...>-<numTop>.json)')
   .option('-x, --exclude <tokens...>', 'Symbols of LSTs to exclude')
