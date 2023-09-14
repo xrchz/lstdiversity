@@ -69,6 +69,7 @@ async function addLST(lstSymbol, f) {
 }
 const ERC20ABI = [
   'function balanceOf(address) view returns (uint256)',
+  'function totalSupply() view returns (uint256)',
   'event Transfer(address indexed sender, address indexed receiver, uint256 value)'
 ]
 await addLST('stETH', () => ({
@@ -234,8 +235,11 @@ for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entrie
   console.log(`${timestamp()} Getting holders for ${lstSymbol}`)
   const holders = await getHolders(lstSymbol, lstContract, deployBlock)
   const ETHvalue = new Map()
-  for (const [holder, balance] of holders.entries())
+  let heldSupply = 0n
+  for (const [holder, balance] of holders.entries()) {
     add(ETHvalue, holder, BigInt(balance) * rate / oneEther)
+    heldSupply += BigInt(balance)
+  }
   console.log(`${timestamp()} Sorting holders by ETH value`)
   const sorted = Array.from(ETHvalue.entries())
     .toSorted(([h1, v1], [h2, v2]) => v1 < v2 ? 1 : v1 > v2 ? -1 : 0)
@@ -243,6 +247,8 @@ for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entrie
   console.log(`${timestamp()} Getting ENS names`)
   const names = reverseRecordsMinBlock < blockTag ?
     await reverseRecords.getNames(sorted.map(([a]) => a), {blockTag}) : []
+  const totalSupply = await lstContract.totalSupply({blockTag})
+  await writeOut(`{"numHolders":${holders.size},"heldSupply":"${heldSupply}","totalSupply":"${totalSupply}","topHolders":`)
   const d1 = makeDelim('[')
   for (const [i, [holder, amountEth]] of sorted.entries()) {
     const amount = holders.get(holder)
@@ -254,6 +260,6 @@ for (const [lstSymbol, {c: lstContract, b: deployBlock, r: rate}] of LSTs.entrie
     if (ensName) await writeOut(`"ens":"${ensName}",`)
     await writeOut(`"amount_lst":"${amount}","amount_eth":"${amountEth}"}`)
   }
-  await writeOut(']')
+  await writeOut(']}')
 }
 await endOut('}}')
