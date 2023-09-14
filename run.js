@@ -11,7 +11,7 @@ const options = program
   .option('-m, --max-query-range <num>', 'Maximum number of blocks to query for events at a time', 1000)
   .option('-c, --multicall-limit <num>', 'Maximum number of balance calls to multicall at a time', 1000)
   .option('-n, --num-top-holders <num>', 'Number of top holders (by total ETH value) to include in output file', 1000)
-  .option('-f, --filename <name>', 'Name of output file (default: lstdiv-<block>-<tokens+...>-<numTop>.json)')
+  .option('-f, --filename <name>', 'Name of output file (default: data/lstdiv-<block>-<tokens+...>-<numTop>.json)')
   .option('-x, --exclude <tokens...>', 'Symbols of LSTs to exclude')
   .parse()
   .opts()
@@ -206,7 +206,7 @@ function add(map, key, increment) {
     map.set(key, increment)
 }
 
-const filename = options.filename || `lstdiv-${blockTag}-${Array.from(LSTs.keys()).join('+')}-${options.numTopHolders}.json`
+const filename = options.filename || `data/lstdiv-${blockTag}-${Array.from(LSTs.keys()).join('+')}-${options.numTopHolders}.json`
 const numTopHolders = parseInt(options.numTopHolders)
 const outputFile = createWriteStream(filename)
 const writeOut = async s => new Promise(resolve =>
